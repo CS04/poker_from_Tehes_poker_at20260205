@@ -16,6 +16,7 @@ const foldButton = document.querySelector("#fold-button");
 const actionButton = document.querySelector("#action-button");
 const amountSlider = document.querySelector("#amount-slider");
 const sliderOutput = document.querySelector("output");
+const infoPot = document.querySelector("#pot");
 const Phases = ["preflop", "flop", "turn", "river", "showdown"];
 let currentPhaseIndex = 0;
 let currentBet = 0;
@@ -993,23 +994,27 @@ function startBettingRound() {
 
 		// Update button label on slider input
 		function onSliderInput() {
-			const val = parseInt(amountSlider.value, 10);
+			const val = Math.max(parseInt(amountSlider.value, 10), parseInt(sliderOutput.value, 10));
 			const minRaise = needToCall + lastRaise;
 			// Only flag *raises* that fall below the minimum‑raise threshold
 			const isInvalidRaise = val > needToCall && val < minRaise && val < player.chips;
+			let strWho = "";
+			if (players.filter((p) => !p.isBot).length > 1) {
+				strWho = player.name + ": ";
+			}
 			if (isInvalidRaise) {
 				sliderOutput.classList.add("invalid");
 			} else {
 				sliderOutput.classList.remove("invalid");
 			}
 			if (val === 0) {
-				actionButton.textContent = "Check";
+				actionButton.textContent = strWho + "Check";
 			} else if (val === player.chips) {
-				actionButton.textContent = "All-In";
+				actionButton.textContent = strWho + "All-In";
 			} else if (val === needToCall) {
-				actionButton.textContent = "Call";
+				actionButton.textContent = strWho + "Call";
 			} else {
-				actionButton.textContent = "Raise";
+				actionButton.textContent = strWho + "Raise";
 			}
 		}
 		// Snap slider to min-raise on change if needed
@@ -1024,8 +1029,27 @@ function startBettingRound() {
 				onSliderInput(); // refresh button label & invalid state
 			}
 		}
+		// Increase AmountSlider for FineTuning (Slider on TouchScreen can be hard to control for small bets)
+		function onInfoPotClick() {
+			const val = Math.min(parseInt(amountSlider.value, 10) + 10, player.chips);
+			const minRaise = needToCall + lastRaise;
+			// If value is between Call and Min‑Raise, snap to minRaise
+			if (val > needToCall && val < minRaise) {
+				amountSlider.value = minRaise;
+				sliderOutput.value = minRaise;
+				sliderOutput.classList.remove("invalid");
+				onSliderInput(); // refresh button label & invalid state
+			}
+			else {
+				amountSlider.value = val;
+				sliderOutput.value = val;
+				sliderOutput.classList.remove("invalid");
+				onSliderInput(); // refresh button label & invalid state
+			}
+		}
 		amountSlider.addEventListener("input", onSliderInput);
 		amountSlider.addEventListener("change", onSliderChange);
+		infoPot.addEventListener("click", onInfoPotClick);
 		onSliderInput();
 
 		// Event handlers
@@ -1038,6 +1062,7 @@ function startBettingRound() {
 			player.seat.classList.remove("active");
 			amountSlider.removeEventListener("input", onSliderInput);
 			amountSlider.removeEventListener("change", onSliderChange);
+			infoPot.removeEventListener("click", onInfoPotClick);
 
 			// Handle action types
 			if (bet === 0) {
@@ -1114,6 +1139,7 @@ function startBettingRound() {
 			player.seat.classList.remove("active");
 			amountSlider.removeEventListener("input", onSliderInput);
 			amountSlider.removeEventListener("change", onSliderChange);
+			infoPot.removeEventListener("click", onInfoPotClick);
 			foldButton.removeEventListener("click", onFold);
 			actionButton.removeEventListener("click", onAction);
 			// Decide whether to continue the betting loop or advance the phase
